@@ -6,7 +6,7 @@ This utility converts TrueType fonts for use in embedded systems, such as Arduin
 ## Author
 Developed by Dad Design.
 
-### Features  
+## Features  
 - **Export Formats:**  
   - **C header file (.h):** For direct inclusion in application code.  
   - **Binary file:** For loading into application flash memory.  
