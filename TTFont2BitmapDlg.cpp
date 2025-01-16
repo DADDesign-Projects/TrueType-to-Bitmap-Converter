@@ -237,6 +237,29 @@ void CTTFont2BitmapDlg::OnEnChangeSampleText()
 	InvalidateRect(NULL, FALSE);
 }
 
+bool is16BitEncoding(uint16_t platformID, uint16_t encodingID) {
+	if (platformID == 0) {
+		// Unicode platform: Always 16-bit
+		return true;
+	}
+	if (platformID == 3 && (encodingID == 1 || encodingID == 10)) {
+		// Microsoft platform with Unicode encoding
+		return true;
+	}
+	// Other platforms are typically 8-bit
+	return false;
+}
+
+CStringW ConvertUTF16BEToCStringW(const BYTE* buffer, size_t length) {
+	CStringW result;
+	for (size_t i = 0; i < length; i += 2) {
+		wchar_t wchar = (buffer[i] << 8) | buffer[i + 1];
+		result.AppendChar(wchar);
+	}
+	return result;
+}
+
+
 void CTTFont2BitmapDlg::OnBnClickedLoadFileFont()
 {
 	// Triggered when the "Load File Font" button is clicked
@@ -271,16 +294,17 @@ void CTTFont2BitmapDlg::OnBnClickedLoadFileFont()
 
 					// Search for the font's name in the records
 					for (int i = 0; i < ntohs(pNameTableHeader->count); i++) {
-						if (ntohs(pNameRecords[i].nameID) == 1) {					// Look for nameID 1 (font name)
+						if (ntohs(pNameRecords[i].nameID) == 1) {					        // Look for nameID 1 (font name)
 							uint16_t length = ntohs(pNameRecords[i].length);
 							uint16_t offset = ntohs(pNameRecords[i].offset);
-							char* name = new char[length + 1];								// Allocate memory for the font name
-							memcpy(name, stringStorage + offset, length);	// Copy the font name
-							name[length] = '\0';											// Null-terminate the string
-
-							FontName = name;			// Save the font name
+							if (is16BitEncoding(ntohs(pNameRecords[i].platformID), ntohs(pNameRecords[i].encodingID))) {
+								FontName = ConvertUTF16BEToCStringW(stringStorage + offset, length);
+							}
+							else {
+								CStringA fontName(reinterpret_cast<const char*>(stringStorage + offset), length);
+								FontName = CString(fontName);  // Conversion CStringA vers CString
+							}
 							bNameFontFound = true;		// Mark as found
-							delete[] name;				// Free the temporary memory
 							break;
 						}
 					}
